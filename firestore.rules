@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /worries/{id} {
+      // 누구나 읽을 수 있어요
+      allow read: if true;
+      // 정해진 형식의 글만 새로 쓸 수 있고, 수정·삭제는 콘솔에서만 가능해요
+      allow create: if request.resource.data.keys().hasOnly(['text','type','nick','at'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 300
+        && request.resource.data.type in ['rest','with','comfort','love','guide','peace','hope']
+        && request.resource.data.nick is string
+        && request.resource.data.nick.size() <= 12
+        && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
