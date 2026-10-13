@@ -328,6 +328,23 @@ textarea {
   color: var(--sky);
   margin: 0.1em 0 0.8em;
 }
+.cap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  background: #1b4f8f;
+  color: #fff;
+  border-radius: 14px;
+  padding: 0.9em 1.1em;
+  margin: 0 0 1.4em;
+}
+.cap b {
+  font-size: 1.05em;
+}
+.cap span {
+  opacity: 0.95;
+  font-size: 0.9em;
+}
 .typebox {
   background: var(--soft);
   border-radius: 18px;
@@ -481,6 +498,15 @@ textarea {
   max-width: 420px;
   width: 100%;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+@media (min-width: 900px) {
+  .dlg {
+    max-width: 500px;
+  }
+}
+.dlg .pill {
+  display: block;
+  margin: 0 auto;
 }
 .dlg h3 {
   margin: 0 0 0.4em;
