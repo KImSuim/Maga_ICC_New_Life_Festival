@@ -229,13 +229,14 @@ function ask() {
     ask();
   };
 }
-function popup(title, msg, items, btn) {
+function popup(title, msg, items, btn, extra) {
   const ov = el("div", "ov"),
     bx = el("div", "dlg");
   bx.setAttribute("role", "dialog");
   bx.setAttribute("aria-modal", "true");
   bx.appendChild(el("h3", "", title));
   bx.appendChild(el("p", "", msg));
+  if (extra) bx.appendChild(extra);
   if (items && items.length) {
     const u = el("ul");
     items.forEach((i) => u.appendChild(el("li", "", i)));
@@ -309,11 +310,16 @@ function last() {
     if ($("#sh").checked && st.text) await share(st.text, st.type, st.nick);
     invite();
     window.scrollTo({ top: 0 });
+    const rt = T[st.type],
+      rs = el("div", "res");
+    rs.appendChild(el("small", "", "나의 마음 유형 · " + rt.kw));
+    rs.appendChild(el("b", "", rt.name));
     popup(
       "결과 화면을 캡처해 주세요 📸",
       "지금 보이는 결과 화면을 캡처(스크린샷)해서 행사 당일에 보여 주세요.",
       ["2026년 10월 25일(일) 오후 2시 30분", "마가의다락방교회"],
-      "확인했어요",
+      "캡쳐할게요",
+      rs,
     );
   };
 }

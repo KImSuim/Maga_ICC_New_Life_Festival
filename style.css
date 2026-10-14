@@ -504,6 +504,22 @@ textarea {
     max-width: 500px;
   }
 }
+.res {
+  background: var(--soft);
+  border-radius: 14px;
+  padding: 0.8em 1em;
+  margin: 0.2em 0 1em;
+  text-align: center;
+}
+.res small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8em;
+}
+.res b {
+  font-size: 1.15em;
+  color: var(--deep);
+}
 .dlg .pill {
   display: block;
   margin: 0 auto;
