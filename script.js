@@ -229,7 +229,7 @@ function ask() {
     ask();
   };
 }
-function popup(title, msg, items, btn, extra) {
+function popup(title, msg, items, btn, extra, onOk) {
   const ov = el("div", "ov"),
     bx = el("div", "dlg");
   bx.setAttribute("role", "dialog");
@@ -251,7 +251,10 @@ function popup(title, msg, items, btn, extra) {
     if (e.key === "Escape") close();
   };
   document.addEventListener("keydown", k);
-  b.onclick = close;
+  b.onclick = () => {
+    close();
+    if (onOk) onOk();
+  };
   ov.onclick = (e) => {
     if (e.target === ov) close();
   };
@@ -316,17 +319,243 @@ function last() {
     rs.appendChild(el("b", "", rt.name));
     popup(
       "결과 화면을 캡처해 주세요 📸",
-      "지금 보이는 결과 화면을 캡처(스크린샷)해서 행사 당일에 보여 주세요.",
+      "아래 버튼을 누르면 결과 이미지가 저장돼요. 행사 당일에 이 이미지를 보여 주세요.",
       ["2026년 10월 25일(일) 오후 2시 30분", "마가의다락방교회"],
       "캡쳐할게요",
       rs,
+      saveImage,
     );
   };
 }
+
+/* 결과 이미지 저장 */
+function rr(x, a, b, w, h, r) {
+  x.beginPath();
+  x.moveTo(a + r, b);
+  x.arcTo(a + w, b, a + w, b + h, r);
+  x.arcTo(a + w, b + h, a, b + h, r);
+  x.arcTo(a, b + h, a, b, r);
+  x.arcTo(a, b, a + w, b, r);
+  x.closePath();
+}
+function wrap(x, text, maxW) {
+  const out = [];
+  String(text)
+    .split("\n")
+    .forEach((par) => {
+      let line = "";
+      par.split(" ").forEach((w) => {
+        const t = line ? line + " " + w : w;
+        if (x.measureText(t).width <= maxW) {
+          line = t;
+          return;
+        }
+        if (line) out.push(line);
+        line = "";
+        [...w].forEach((ch) => {
+          if (x.measureText(line + ch).width <= maxW) line += ch;
+          else {
+            out.push(line);
+            line = ch;
+          }
+        });
+      });
+      if (line) out.push(line);
+    });
+  return out;
+}
+function layout(x, draw, img, W) {
+  const t = T[st.type],
+    S = '"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif',
+    P = 64,
+    CW = W - P * 2;
+  let y = 64;
+  if (draw) {
+    x.save();
+    rr(x, P, y, CW, 500, 28);
+    x.clip();
+    if (img) {
+      const s = Math.max(CW / img.width, 500 / img.height),
+        w = img.width * s,
+        h = img.height * s;
+      x.drawImage(img, P + (CW - w) / 2, y + (500 - h) / 2, w, h);
+    } else {
+      x.fillStyle = "#2E7BD0";
+      x.fillRect(P, y, CW, 500);
+    }
+    x.restore();
+  }
+  y += 500 + 76;
+  x.textBaseline = "alphabetic";
+  x.font = "600 34px " + S;
+  if (draw) {
+    x.fillStyle = "#1B4F8F";
+    x.fillText(
+      (st.nick ? st.nick + "님의 " : "나의 ") + "마음 유형 · " + t.kw,
+      P,
+      y,
+    );
+  }
+  y += 24;
+  x.font = "700 62px " + S;
+  wrap(x, t.name, CW).forEach((l) => {
+    y += 80;
+    if (draw) {
+      x.fillStyle = "#2E7BD0";
+      x.fillText(l, P, y);
+    }
+  });
+  y += 34;
+  x.font = "400 32px " + S;
+  wrap(x, t.desc, CW).forEach((l) => {
+    y += 52;
+    if (draw) {
+      x.fillStyle = "#14263F";
+      x.fillText(l, P, y);
+    }
+  });
+  y += 44;
+  x.font = "400 33px " + S;
+  const vl = wrap(x, t.verse, CW - 72),
+    bt = y,
+    bh = 36 + vl.length * 52 + 16 + 34 + 36;
+  if (draw) {
+    x.fillStyle = "#E3EEFB";
+    rr(x, P, bt, CW, bh, 24);
+    x.fill();
+    x.fillStyle = "#14263F";
+    x.font = "400 33px " + S;
+    vl.forEach((l, i) => x.fillText(l, P + 36, bt + 36 + (i + 1) * 52 - 12));
+    x.fillStyle = "#5F7390";
+    x.font = "400 28px " + S;
+    x.fillText(t.ref, P + 36, bt + bh - 36 - 4);
+  }
+  y = bt + bh + 48;
+  if (draw) {
+    x.fillStyle = "#1B4F8F";
+    rr(x, P, y, CW, 170, 24);
+    x.fill();
+    x.fillStyle = "#fff";
+    x.font = "700 38px " + S;
+    x.fillText("이 이미지를 행사 당일에 보여 주세요", P + 36, y + 64);
+    x.font = "400 28px " + S;
+    x.fillText(
+      "2026년 10월 25일(일) 오후 2시 30분 · 마가의다락방교회",
+      P + 36,
+      y + 118,
+    );
+  }
+  return y + 170 + 64;
+}
+async function makeImage() {
+  await document.fonts.ready;
+  try {
+    await Promise.all([
+      document.fonts.load('700 40px "IBM Plex Sans KR"'),
+      document.fonts.load('400 32px "IBM Plex Sans KR"'),
+    ]);
+  } catch (e) {}
+  let img = null;
+  try {
+    img = await new Promise((r, j) => {
+      const i = new Image();
+      i.onload = () => r(i);
+      i.onerror = j;
+      i.src = "og-image.jpg";
+    });
+  } catch (e) {}
+  const W = 1080,
+    H = layout(
+      document.createElement("canvas").getContext("2d"),
+      false,
+      null,
+      W,
+    );
+  const render = async (im) => {
+    const c = document.createElement("canvas");
+    c.width = W;
+    c.height = H;
+    const x = c.getContext("2d");
+    x.fillStyle = "#EEF5FD";
+    x.fillRect(0, 0, W, H);
+    x.fillStyle = "#fff";
+    rr(x, 24, 24, W - 48, H - 48, 40);
+    x.fill();
+    layout(x, true, im, W);
+    return await new Promise((res, rej) => {
+      try {
+        c.toBlob(
+          (bl) => (bl ? res(bl) : rej(new Error("toBlob"))),
+          "image/png",
+        );
+      } catch (e) {
+        rej(e);
+      }
+    });
+  };
+  let blob;
+  try {
+    blob = await render(img);
+  } catch (e) {
+    blob = await render(null);
+  }
+  return new File([blob], "festival-result.png", { type: "image/png" });
+}
+function prepareImage() {
+  st.file = null;
+  st.filep = makeImage()
+    .then((f) => {
+      st.file = f;
+      return f;
+    })
+    .catch((e) => {
+      console.error(e);
+      return null;
+    });
+}
+async function saveImage() {
+  if (/KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(navigator.userAgent)) {
+    popup(
+      "브라우저에서 열어 주세요",
+      "앱 안에서는 이미지 저장이 막힐 수 있어요. 메뉴에서 '다른 브라우저로 열기'를 눌러 크롬이나 사파리에서 열어 주세요.",
+      [],
+      "확인",
+    );
+    return;
+  }
+  let f = st.file;
+  if (!f) {
+    toast("이미지를 만드는 중이에요…");
+    f = await st.filep;
+  }
+  if (!f) {
+    toast("이미지를 만들지 못했어요. 화면을 캡처해 주세요");
+    return;
+  }
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [f] })) {
+      await navigator.share({ files: [f], title: "2026 새생명축제 마음 유형" });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === "AbortError") return;
+  }
+  const u = URL.createObjectURL(f),
+    a = document.createElement("a");
+  a.href = u;
+  a.download = f.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 4000);
+  toast("이미지를 저장했어요. 갤러리나 다운로드 폴더를 확인해 주세요");
+}
+
 function invite() {
   const t = T[st.type];
+  prepareImage();
   view.innerHTML = `<article class="inv"><div class="body">
-    <div class="cap"><b>이 화면을 캡처해 주세요</b><span>행사 당일(10월 25일 일요일 오후 2시 30분)에 이 결과 화면을 보여 주세요.</span></div>
+    <div class="cap"><b>이 결과를 저장해 주세요</b><span>아래 '이미지로 저장하기'를 누르거나 화면을 캡처해서, 행사 당일(10월 25일 일요일 오후 2시 30분)에 보여 주세요.</span></div>
     <p class="ev">나의 마음 유형 · ${t.kw}</p>
     <div class="title">${t.name}</div>
     <div class="typebox"><p>${t.desc}</p>
@@ -334,10 +563,11 @@ function invite() {
     <p class="close" id="mine"></p>
     <p class="close" style="margin-top:1.2em;font-size:.85em">2026 새생명축제 · 10월 25일(일) 오후 2시 30분 · 마가의다락방교회</p>
     </div></article>
-    <div class="acts"><button class="pill" id="toC">다른 사람들의 마음 보기</button><button class="ghost" id="re">다시 해보기</button></div>`;
+    <div class="acts"><button class="pill" id="sv">이미지로 저장하기</button><button class="ghost" id="toC">다른 사람들의 마음 보기</button><button class="ghost" id="re">다시 해보기</button></div>`;
   $(".ev").textContent =
     (st.nick ? st.nick + "님의 " : "나의 ") + "마음 유형 · " + t.kw;
   $("#mine").textContent = st.text ? "내가 적은 이야기: " + st.text : "";
+  $("#sv").onclick = saveImage;
   $("#toC").onclick = () => tab("comm");
   $("#re").onclick = () => {
     st.type = null;
